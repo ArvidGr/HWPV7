@@ -8,34 +8,44 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
+    if (argc < 3)
     {
-        cout << "Usage: " << argv[0] << " <mode> [verbose]" << endl;
+        cout << "Usage: " << argv[0] << " <board> <mode> [verbose]" << endl;
+        cout << "  board:   A oder B (Board-Kennung)" << endl;
         cout << "  mode:    send, receive, oder fullduplex" << endl;
         cout << "  verbose: 0 oder 1 (optional, default: 0)" << endl;
         cout << "\nBeispiel (Half-Duplex):" << endl;
-        cout << "  Rechner 1: " << argv[0] << " send" << endl;
-        cout << "  Rechner 2: " << argv[0] << " receive" << endl;
+        cout << "  Board A: " << argv[0] << " A send" << endl;
+        cout << "  Board B: " << argv[0] << " B receive" << endl;
         cout << "\nBeispiel (Full-Duplex):" << endl;
-        cout << "  Rechner 1: " << argv[0] << " fullduplex" << endl;
-        cout << "  Rechner 2: " << argv[0] << " fullduplex" << endl;
+        cout << "  Board A: " << argv[0] << " A fullduplex" << endl;
+        cout << "  Board B: " << argv[0] << " B fullduplex" << endl;
         cout << "\nBeispiel (mit Verbose):" << endl;
-        cout << "  Rechner 1: " << argv[0] << " send 1" << endl;
+        cout << "  Board A: " << argv[0] << " A send 1" << endl;
         return 1;
     }
 
-    string mode = argv[1];
+    string board_id = argv[1];
+    string mode = argv[2];
     bool verbose = false;
 
-    if (argc >= 3)
+    if (argc >= 4)
     {
-        verbose = (atoi(argv[2]) == 1);
+        verbose = (atoi(argv[3]) == 1);
+    }
+
+    // Validiere Board-Kennung
+    if (board_id != "A" && board_id != "B")
+    {
+        cerr << "Board muss 'A' oder 'B' sein!" << endl;
+        return 1;
     }
 
     cout << "B15F Full-Duplex Kommunikation" << endl;
     cout << "Mit Checksumme & ARQ" << endl;
     cout << endl;
 
+    cout << "Board: " << board_id << endl;
     cout << "Mode: " << mode << endl;
     if (verbose)
     {
@@ -43,7 +53,7 @@ int main(int argc, char *argv[])
     }
     cout << endl;
 
-    B15Board board("B15", verbose);
+    B15Board board(board_id, verbose);
 
     if (mode == "send")
     {

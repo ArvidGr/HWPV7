@@ -65,6 +65,8 @@ B15Implementation/
 
 ### Build-Befehle
 
+**Windows (PowerShell):**
+
 ```powershell
 # Projekt kompilieren
 .\build.ps1 build
@@ -79,63 +81,126 @@ B15Implementation/
 .\build.ps1 help
 ```
 
+**Linux (Makefile):**
+
+```bash
+# Projekt kompilieren
+make
+
+# Build-Verzeichnis aufräumen
+make clean
+
+# Clean + Build
+make rebuild
+
+# Hilfe anzeigen
+make help
+```
+
 ## Verwendung
 
 ### Half-Duplex Kommunikation
 
-**Board 1 (Sender):**
+**Board A (Sender):**
+
+**Windows:**
 
 ```powershell
-.\build.ps1 run-send
+.\build.ps1 run-send-a
+# oder direkt:
+.\build\b15comm.exe A send
 ```
 
-oder
+**Linux:**
 
-```powershell
-.\build\b15comm.exe send
+```bash
+make run-send-a
+# oder direkt:
+./build/b15comm A send
 ```
 
-**Board 2 (Receiver):**
+**Board B (Receiver):**
+
+**Windows:**
 
 ```powershell
-.\build.ps1 run-receive
+.\build.ps1 run-receive-b
+# oder direkt:
+.\build\b15comm.exe B receive
 ```
 
-oder
+**Linux:**
 
-```powershell
-.\build\b15comm.exe receive
+```bash
+make run-receive-b
+# oder direkt:
+./build/b15comm B receive
 ```
 
 ### Full-Duplex Kommunikation
 
-**Beide Boards:**
+**Board A:**
+
+**Windows:**
 
 ```powershell
-.\build.ps1 run-fullduplex
+.\build.ps1 run-fullduplex-a
+# oder direkt:
+.\build\b15comm.exe A fullduplex
 ```
 
-oder
+**Linux:**
+
+```bash
+make run-fullduplex-a
+# oder direkt:
+./build/b15comm A fullduplex
+```
+
+**Board B:**
+
+**Windows:**
 
 ```powershell
-.\build\b15comm.exe fullduplex
+.\build.ps1 run-fullduplex-b
+# oder direkt:
+.\build\b15comm.exe B fullduplex
+```
+
+**Linux:**
+
+```bash
+make run-fullduplex-b
+# oder direkt:
+./build/b15comm B fullduplex
 ```
 
 ### Verbose-Modus
 
 Für detaillierte Debug-Ausgaben:
 
+**Windows:**
+
 ```powershell
-.\build\b15comm.exe send 1
-.\build\b15comm.exe receive 1
-.\build\b15comm.exe fullduplex 1
+.\build\b15comm.exe A send 1
+.\build\b15comm.exe B receive 1
+.\build\b15comm.exe A fullduplex 1
+```
+
+**Linux:**
+
+```bash
+./build/b15comm A send 1
+./build/b15comm B receive 1
+./build/b15comm A fullduplex 1
 ```
 
 ## Datei-Ausgabe
 
 Im Full-Duplex-Modus werden empfangene Nachrichten automatisch in Dateien geschrieben:
 
-- `received_B15.txt` - Empfangene Nachrichten
+- `received_A.txt` - Empfangene Nachrichten von Board A
+- `received_B.txt` - Empfangene Nachrichten von Board B
 
 ## Technische Details
 

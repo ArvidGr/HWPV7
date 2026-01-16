@@ -30,13 +30,16 @@ function Show-Help {
     Write-Host "==============================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Verfuegbare Befehle:" -ForegroundColor Yellow
-    Write-Host "  .\build.ps1 build          - Kompiliert das Projekt" -ForegroundColor Green
-    Write-Host "  .\build.ps1 clean          - Loescht Build-Artefakte" -ForegroundColor Green
-    Write-Host "  .\build.ps1 rebuild        - Clean + Build" -ForegroundColor Green
-    Write-Host "  .\build.ps1 run-send       - Startet im Sender-Modus" -ForegroundColor Green
-    Write-Host "  .\build.ps1 run-receive    - Startet im Receiver-Modus" -ForegroundColor Green
-    Write-Host "  .\build.ps1 run-fullduplex - Startet im Full-Duplex-Modus" -ForegroundColor Green
-    Write-Host "  .\build.ps1 help           - Zeigt diese Hilfe" -ForegroundColor Green
+    Write-Host "  .\build.ps1 build            - Kompiliert das Projekt" -ForegroundColor Green
+    Write-Host "  .\build.ps1 clean            - Loescht Build-Artefakte" -ForegroundColor Green
+    Write-Host "  .\build.ps1 rebuild          - Clean + Build" -ForegroundColor Green
+    Write-Host "  .\build.ps1 run-send-a       - Startet Board A im Sender-Modus" -ForegroundColor Green
+    Write-Host "  .\build.ps1 run-send-b       - Startet Board B im Sender-Modus" -ForegroundColor Green
+    Write-Host "  .\build.ps1 run-receive-a    - Startet Board A im Receiver-Modus" -ForegroundColor Green
+    Write-Host "  .\build.ps1 run-receive-b    - Startet Board B im Receiver-Modus" -ForegroundColor Green
+    Write-Host "  .\build.ps1 run-fullduplex-a - Startet Board A im Full-Duplex-Modus" -ForegroundColor Green
+    Write-Host "  .\build.ps1 run-fullduplex-b - Startet Board B im Full-Duplex-Modus" -ForegroundColor Green
+    Write-Host "  .\build.ps1 help             - Zeigt diese Hilfe" -ForegroundColor Green
     Write-Host ""
 }
 
@@ -80,33 +83,36 @@ function Clean-Project {
 }
 
 function Run-Sender {
+    param([string]$Board)
     if (-not (Test-Path $OUTPUT)) {
         Write-Host "Programm nicht gefunden. Fuehre Build aus..." -ForegroundColor Yellow
         Build-Project
     }
     
-    Write-Host "Starte Sender-Modus..." -ForegroundColor Cyan
-    & $OUTPUT send
+    Write-Host "Starte Board $Board im Sender-Modus..." -ForegroundColor Cyan
+    & $OUTPUT $Board send
 }
 
 function Run-Receiver {
+    param([string]$Board)
     if (-not (Test-Path $OUTPUT)) {
         Write-Host "Programm nicht gefunden. Fuehre Build aus..." -ForegroundColor Yellow
         Build-Project
     }
     
-    Write-Host "Starte Receiver-Modus..." -ForegroundColor Cyan
-    & $OUTPUT receive
+    Write-Host "Starte Board $Board im Receiver-Modus..." -ForegroundColor Cyan
+    & $OUTPUT $Board receive
 }
 
 function Run-FullDuplex {
+    param([string]$Board)
     if (-not (Test-Path $OUTPUT)) {
         Write-Host "Programm nicht gefunden. Fuehre Build aus..." -ForegroundColor Yellow
         Build-Project
     }
     
-    Write-Host "Starte Full-Duplex-Modus..." -ForegroundColor Cyan
-    & $OUTPUT fullduplex
+    Write-Host "Starte Board $Board im Full-Duplex-Modus..." -ForegroundColor Cyan
+    & $OUTPUT $Board fullduplex
 }
 
 # Hauptlogik
@@ -121,14 +127,23 @@ switch ($Command.ToLower()) {
         Clean-Project
         Build-Project
     }
-    "run-send" {
-        Run-Sender
+    "run-send-a" {
+        Run-Sender -Board "A"
     }
-    "run-receive" {
-        Run-Receiver
+    "run-send-b" {
+        Run-Sender -Board "B"
     }
-    "run-fullduplex" {
-        Run-FullDuplex
+    "run-receive-a" {
+        Run-Receiver -Board "A"
+    }
+    "run-receive-b" {
+        Run-Receiver -Board "B"
+    }
+    "run-fullduplex-a" {
+        Run-FullDuplex -Board "A"
+    }
+    "run-fullduplex-b" {
+        Run-FullDuplex -Board "B"
     }
     "help" {
         Show-Help
