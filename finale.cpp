@@ -1,9 +1,3 @@
-// ============================================================================
-// B15F 2-Bit Parallel Communication Simulator - FINALE VERSION
-// Full-Duplex mit ARQ, CRC8 Checksumme, und Fehler-Injektion
-// Alle Module in einer einzigen Datei zusammengefasst
-// ============================================================================
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -18,17 +12,13 @@
 
 using namespace std;
 
-// ============================================================================
 // PROTOCOL CONSTANTS
-// ============================================================================
 const uint8_t ACK_BYTE = 0x06;  // ASCII ACK
 const uint8_t NACK_BYTE = 0x15; // ASCII NAK
 const uint8_t EOT_BYTE = 0x04;  // ASCII EOT (End of Transmission)
 const int MAX_RETRIES = 5;
 
-// ============================================================================
 // CHECKSUM - CRC8 Implementation
-// ============================================================================
 uint8_t calculate_checksum(uint8_t data)
 {
     uint8_t crc = 0xFF;
@@ -47,9 +37,7 @@ uint8_t calculate_checksum(uint8_t data)
     return crc;
 }
 
-// ============================================================================
 // STATISTICS TRACKING
-// ============================================================================
 class Stats
 {
 public:
@@ -73,9 +61,7 @@ public:
 
 Stats global_stats;
 
-// ============================================================================
 // ERROR INJECTOR - Bit-Flipping for Testing
-// ============================================================================
 class ErrorInjector
 {
 private:
@@ -109,9 +95,7 @@ public:
 
 ErrorInjector error_injector(0);
 
-// ============================================================================
 // PATCH CABLE - File-Based 4-Wire Simulation
-// ============================================================================
 class PatchCableFile
 {
 private:
@@ -186,9 +170,7 @@ public:
     }
 };
 
-// ============================================================================
 // B15 SIMULATOR - Core Protocol Implementation
-// ============================================================================
 class B15Simulator
 {
 public:
@@ -532,9 +514,7 @@ public:
     void run_fullduplex_mode();
 };
 
-// ============================================================================
 // FULL-DUPLEX MODE - Threading Support
-// ============================================================================
 struct FullDuplexThreadData
 {
     B15Simulator *sim;
@@ -672,14 +652,11 @@ void *fullduplex_rx_thread(void *arg)
 
 void B15Simulator::run_fullduplex_mode()
 {
-    cout << "\n========================================" << endl;
     cout << "  FULL-DUPLEX MODE - " << name << endl;
-    cout << "========================================" << endl;
     cout << "Beide Boards koennen gleichzeitig senden und empfangen!" << endl;
     cout << "Gib Nachrichten ein, um sie zu senden." << endl;
     cout << "Empfangene Nachrichten werden automatisch angezeigt." << endl;
-    cout << "========================================\n"
-         << endl;
+    << endl;
 
     cout << "HINWEIS: Full-Duplex nutzt Mutex-Locks, um Kollisionen" << endl;
     cout << "         zu vermeiden. TX und RX teilen sich das Kabel.\n"
@@ -708,9 +685,7 @@ void B15Simulator::run_fullduplex_mode()
     global_stats.print();
 }
 
-// ============================================================================
 // MAIN - Command Line Interface
-// ============================================================================
 int main(int argc, char *argv[])
 {
     if (argc < 3)
