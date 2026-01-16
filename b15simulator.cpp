@@ -4,6 +4,7 @@
 #include "error_injector.h"
 #include "stats.h"
 #include <iostream>
+#include <fstream>
 #include <bitset>
 #include <thread>
 #include <chrono>
@@ -346,18 +347,22 @@ void B15Simulator::run_receiver_mode()
 }
 
 // ==================== FULL-DUPLEX MODE ====================
+// NOTE: This implementation uses a mutex to serialize cable access.
+// True simultaneous full-duplex would require independent channels,
+// but with only 4 bits per board, we time-multiplex the channel.
 
-struct ThreadData
+struct FullDuplexThreadData
 {
     B15Simulator *sim;
-    bool is_tx;
     volatile bool *running;
+    pthread_mutex_t *cable_mutex;
 };
 
 void *fullduplex_tx_thread(void *arg)
 {
-    ThreadData *data = (ThreadData *)arg;
+    FullDuplexThreadData *data = (FullDuplexThreadData *)arg;
     B15Simulator *sim = data->sim;
+    pthread_mutex_t *mutex = data->cable_mutex;
 
     cout << "\n[" << sim->name << " TX] SENDEMODUS (Full-Duplex)" << endl;
     cout << "[" << sim->name << " TX] Gib Nachrichten ein (Ctrl+C zum Beenden):" << endl;
@@ -376,7 +381,7 @@ void *fullduplex_tx_thread(void *arg)
             continue;
         }
 
-        // Sende Nachricht Byte für Byte
+        // Sende Nachricht Byte für Byte (mit Mutex-Schutz)
         for (size_t i = 0; i < message.length(); ++i)
         {
             uint8_t byte = message[i];
@@ -388,7 +393,15 @@ void *fullduplex_tx_thread(void *arg)
                 {
                     cout << "[" << sim->name << " TX] Retry " << retry << " fuer Byte '" << (char)byte << "'" << endl;
                 }
+
+                pthread_mutex_lock(mutex);
                 success = sim->send_byte_with_checksum(byte);
+                pthread_mutex_unlock(mutex);
+
+                if (!success)
+                {
+                    this_thread::sleep_for(chrono::milliseconds(10));
+                }
             }
 
             if (!success)
@@ -402,7 +415,14 @@ void *fullduplex_tx_thread(void *arg)
         bool eot_sent = false;
         for (int retry = 0; retry < MAX_RETRIES && !eot_sent; ++retry)
         {
+            pthread_mutex_lock(mutex);
             eot_sent = sim->send_byte_with_checksum(EOT_BYTE);
+            pthread_mutex_unlock(mutex);
+
+            if (!eot_sent)
+            {
+                this_thread::sleep_for(chrono::milliseconds(10));
+            }
         }
 
         if (eot_sent)
@@ -417,21 +437,30 @@ void *fullduplex_tx_thread(void *arg)
 
 void *fullduplex_rx_thread(void *arg)
 {
-    ThreadData *data = (ThreadData *)arg;
+    FullDuplexThreadData *data = (FullDuplexThreadData *)arg;
     B15Simulator *sim = data->sim;
+    pthread_mutex_t *mutex = data->cable_mutex;
+
+    // Open output file for this board
+    string filename = "received_" + sim->name.substr(sim->name.find(' ') + 1) + ".txt";
+    ofstream outfile(filename, ios::app); // Append mode
 
     cout << "[" << sim->name << " RX] EMPFANGSMODUS (Full-Duplex)" << endl;
+    cout << "[" << sim->name << " RX] Schreibe empfangene Nachrichten in: " << filename << endl;
     cout << "[" << sim->name << " RX] Warte auf Nachrichten..." << endl;
 
     string received_message = "";
 
     while (*(data->running))
     {
+        pthread_mutex_lock(mutex);
         uint8_t byte = sim->receive_byte_with_checksum();
+        pthread_mutex_unlock(mutex);
 
         if (byte == 0xFF)
         {
             // Fehler oder Timeout
+            this_thread::sleep_for(chrono::milliseconds(10));
             continue;
         }
 
@@ -439,11 +468,24 @@ void *fullduplex_rx_thread(void *arg)
         {
             cout << "[" << sim->name << " RX] >>> NACHRICHT EMPFANGEN: \""
                  << received_message << "\" <<<" << endl;
+
+            // Write to file
+            if (outfile.is_open())
+            {
+                outfile << received_message << endl;
+                outfile.flush();
+            }
+
             received_message = "";
             continue;
         }
 
         received_message += (char)byte;
+    }
+
+    if (outfile.is_open())
+    {
+        outfile.close();
     }
 
     return nullptr;
@@ -460,12 +502,18 @@ void B15Simulator::run_fullduplex_mode()
     cout << "========================================\n"
          << endl;
 
+    cout << "HINWEIS: Full-Duplex nutzt Mutex-Locks, um Kollisionen" << endl;
+    cout << "         zu vermeiden. TX und RX teilen sich das Kabel.\n"
+         << endl;
+
     volatile bool running = true;
+    pthread_mutex_t cable_mutex;
+    pthread_mutex_init(&cable_mutex, nullptr);
 
     pthread_t tx_thread, rx_thread;
 
-    ThreadData tx_data = {this, true, &running};
-    ThreadData rx_data = {this, false, &running};
+    FullDuplexThreadData tx_data = {this, &running, &cable_mutex};
+    FullDuplexThreadData rx_data = {this, &running, &cable_mutex};
 
     // Starte TX Thread (Sender)
     pthread_create(&tx_thread, nullptr, fullduplex_tx_thread, &tx_data);
@@ -478,6 +526,8 @@ void B15Simulator::run_fullduplex_mode()
 
     running = false;
     pthread_join(rx_thread, nullptr);
+
+    pthread_mutex_destroy(&cable_mutex);
 
     cout << "\n[" << name << "] Full-Duplex Mode beendet." << endl;
     global_stats.print();
