@@ -127,7 +127,7 @@ private:
     // LOW-LEVEL B15F ACCESS
 
     // Schreibt auf Bits 0-3 von PORTA
-    void write_lower(uint8_t data)
+    void write_output(uint8_t data)
     {
         lock_guard<mutex> lock(board_mutex);
         uint8_t current = drv.getRegister(&PORTA);
@@ -136,72 +136,32 @@ private:
 
         if (verbose)
         {
-            cout << "  [" << name << "] Write Lower: " << bitset<4>(data & 0x0F) << endl;
+            cout << "  [" << name << "] Write Bits 0-3: " << bitset<4>(data & 0x0F) << endl;
         }
     }
 
-    // Schreibt auf Bits 4-7 von PORTA
-    void write_upper(uint8_t data)
-    {
-        lock_guard<mutex> lock(board_mutex);
-        uint8_t current = drv.getRegister(&PORTA);
-        uint8_t new_val = (current & 0x0F) | ((data & 0x0F) << 4);
-        drv.setRegister(&PORTA, new_val);
-
-        if (verbose)
-        {
-            cout << "  [" << name << "] Write Upper: " << bitset<4>(data & 0x0F) << endl;
-        }
-    }
-
-    // Liest Bits 4-7 von PINA MIT KREUZUNG!
-    // Patchkabel-Kreuzung: Bit 4→7, 5→6, 6→5, 7→4
-    uint8_t read_upper_crossed()
+    // Liest Bits 7-4 von PINA MIT KREUZUNG!
+    // Physikalische Kabelkreuzung: Bit7_PINA <- Bit0_other, Bit6_PINA <- Bit1_other, etc.
+    uint8_t read_input()
     {
         lock_guard<mutex> lock(board_mutex);
         uint8_t value = drv.getRegister(&PINA);
-        uint8_t upper = (value >> 4) & 0x0F;
+        uint8_t upper = (value >> 4) & 0x0F; // Lese Bits 7-4
 
-        // Kreuzung: Bit 0↔3, 1↔2
+        // Kabelkreuzung rückgängig machen: PINA[7]->Bit[0], PINA[6]->Bit[1], PINA[5]->Bit[2], PINA[4]->Bit[3]
         uint8_t crossed = 0;
-        if (upper & 0x01)
-            crossed |= 0x08;
-        if (upper & 0x02)
-            crossed |= 0x04;
-        if (upper & 0x04)
-            crossed |= 0x02;
-        if (upper & 0x08)
-            crossed |= 0x01;
+        if (upper & 0x01) // PINA bit 4
+            crossed |= 0x08; // wird zu Bit 3
+        if (upper & 0x02) // PINA bit 5
+            crossed |= 0x04; // wird zu Bit 2
+        if (upper & 0x04) // PINA bit 6
+            crossed |= 0x02; // wird zu Bit 1
+        if (upper & 0x08) // PINA bit 7
+            crossed |= 0x01; // wird zu Bit 0
 
         if (verbose)
         {
-            cout << "  [" << name << "] Read Upper (crossed): " << bitset<4>(crossed) << endl;
-        }
-
-        return crossed;
-    }
-
-    // Liest Bits 0-3 von PINA MIT KREUZUNG!
-    uint8_t read_lower_crossed()
-    {
-        lock_guard<mutex> lock(board_mutex);
-        uint8_t value = drv.getRegister(&PINA);
-        uint8_t lower = value & 0x0F;
-
-        // Kreuzung: Bit 0↔3, 1↔2
-        uint8_t crossed = 0;
-        if (lower & 0x01)
-            crossed |= 0x08;
-        if (lower & 0x02)
-            crossed |= 0x04;
-        if (lower & 0x04)
-            crossed |= 0x02;
-        if (lower & 0x08)
-            crossed |= 0x01;
-
-        if (verbose)
-        {
-            cout << "  [" << name << "] Read Lower (crossed): " << bitset<4>(crossed) << endl;
+            cout << "  [" << name << "] Read Bits 7-4 (crossed): " << bitset<4>(crossed) << endl;
         }
 
         return crossed;
@@ -222,11 +182,11 @@ private:
         tx_clock_state ^= CLOCK;
         output |= tx_clock_state;
 
-        write_lower(output); // TX schreibt auf Bits 0-3
+        write_output(output); // TX schreibt DATA+CLOCK auf Bits 0-3
 
         for (int i = 0; i < 5000; i++)
         {
-            uint8_t input = read_upper_crossed(); // TX liest ACK von Bits 4-7 (gekreuzt!)
+            uint8_t input = read_input(); // TX liest ACK vom anderen Board (via Bits 7-4)
             uint8_t received_ack = input & ACK;
 
             if (received_ack != tx_last_received_ack)
@@ -245,7 +205,7 @@ private:
     {
         for (int i = 0; i < 5000; i++)
         {
-            uint8_t input = read_lower_crossed(); // RX liest Daten von Bits 0-3 (gekreuzt!)
+            uint8_t input = read_input(); // RX liest DATA+CLOCK vom anderen Board (via Bits 7-4)
             uint8_t received_clock = input & CLOCK;
 
             if (received_clock != rx_last_received_clock)
@@ -261,7 +221,7 @@ private:
                 rx_ack_state ^= ACK;
                 uint8_t output = rx_ack_state | rx_clock_state;
 
-                write_upper(output); // RX schreibt ACK auf Bits 4-7
+                write_output(output); // RX schreibt ACK auf Bits 0-3
 
                 return data;
             }
@@ -331,18 +291,15 @@ public:
 
         drv.delay_ms(200);
 
-        // Initialisiere Ausgänge
-        write_lower(0);
-        write_upper(0);
+        // Initialisiere Ausgänge (Bits 0-3)
+        write_output(0);
 
         drv.delay_ms(100);
 
-        // Lese initiale Zustände
-        uint8_t initial_rx = read_lower_crossed();
-        rx_last_received_clock = initial_rx & CLOCK;
-
-        uint8_t initial_tx = read_upper_crossed();
-        tx_last_received_ack = initial_tx & ACK;
+        // Lese initiale Zustände vom anderen Board (Bits 7-4)
+        uint8_t initial = read_input();
+        rx_last_received_clock = initial & CLOCK;
+        tx_last_received_ack = initial & ACK;
 
         cout << "[" << name << "] Initialisiert!" << endl;
         cout << "[" << name << "] DDRA = 0x0F (Bits 0-3: Output, 4-7: Input)" << endl;
