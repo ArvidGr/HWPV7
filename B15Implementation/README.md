@@ -155,6 +155,10 @@ make run-receive-b
 make run-fullduplex-a
 # oder direkt:
 ./build/b15comm A fullduplex
+# mit direkter Inputline:
+echo "test message" | ./build/b15comm A fullduplex
+# mit inputfile:
+cat input.txt | ./build/b15comm A fullduplex
 ```
 
 **Board B:**
