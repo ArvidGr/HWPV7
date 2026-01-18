@@ -30,6 +30,8 @@ B15Board::B15Board(string board_name, bool verb)
     rx_ack_state = 0;
     rx_last_received_clock = 0;
 
+    cached_output_state = 0;
+
     drv.delay_ms(200);
 
     // Initialisiere Ausgänge (Bits 0-3)
@@ -56,13 +58,14 @@ void B15Board::set_verbose(bool v)
 void B15Board::write_output(uint8_t data)
 {
     lock_guard<mutex> lock(board_mutex);
+    cached_output_state = data & 0x0F; // Cache new output state
     uint8_t current = drv.getRegister(&PORTA);
-    uint8_t new_val = (current & 0xF0) | (data & 0x0F);
+    uint8_t new_val = (current & 0xF0) | cached_output_state;
     drv.setRegister(&PORTA, new_val);
 
     if (verbose)
     {
-        cout << "  [" << name << "] Write Bits 0-3: " << bitset<4>(data & 0x0F) << endl;
+        cout << "  [" << name << "] Write Bits 0-3: " << bitset<4>(cached_output_state) << endl;
     }
 }
 
@@ -97,8 +100,8 @@ bool B15Board::send_2bits(uint8_t data)
 {
     data &= 0x03;
 
-    // TX schreibt NUR bits 0-2 (DATA0, DATA1, CLOCK)
-    uint8_t output = 0;
+    // TX schreibt NUR bits 0-2 (DATA0, DATA1, CLOCK), bewahrt Bit 3
+    uint8_t output = cached_output_state & 0x08; // Preserve bit 3 (ACK)
     if (data & 0x01)
         output |= DATA0;
     if (data & 0x02)
@@ -144,8 +147,8 @@ uint8_t B15Board::receive_2bits()
                 data |= 0x02;
 
             rx_ack_state ^= ACK;
-            // RX schreibt NUR bit 3 (ACK)
-            uint8_t output = rx_ack_state;
+            // RX schreibt NUR bit 3 (ACK), bewahrt Bits 0-2
+            uint8_t output = (cached_output_state & 0x07) | rx_ack_state; // Preserve bits 0-2 (DATA+CLOCK)
 
             write_output(output); // RX schreibt ACK auf Bit 3
 

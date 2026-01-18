@@ -37,6 +37,9 @@ private:
     uint8_t rx_ack_state;
     uint8_t rx_last_received_clock;
 
+    // Cached output state (bits 0-3)
+    uint8_t cached_output_state;
+
     // Low-Level B15F Access
     void write_output(uint8_t data);
     uint8_t read_input();
