@@ -7,7 +7,7 @@
 const uint8_t ACK_BYTE = 0x06;     // ASCII ACK
 const uint8_t NACK_BYTE = 0x15;    // ASCII NAK
 const uint8_t EOT_BYTE = 0x04;     // ASCII EOT (End of Transmission)
-const uint8_t NO_DATA_BYTE = 0x00; // NULL - signals "no data to send"
+const uint8_t NO_DATA_BYTE = 0x10; // signals "no data to send"
 const int MAX_RETRIES = 5;
 
 // Bit-Masken für die 2-Bit Kommunikation
